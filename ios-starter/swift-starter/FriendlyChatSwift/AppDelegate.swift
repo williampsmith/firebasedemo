@@ -37,34 +37,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate, GIDSignInDelegate {
     
     // Step 4: Implement Google sign in delegate.
   func sign(_ signIn: GIDSignIn!, didSignInFor user: GIDGoogleUser!, withError error: Error?) {
-    // handle errors
     if let error = error {
       print("Error \(error)")
       return
     }
     
-    // create new credential from user authentication data
-//    guard let authentication = user.authentication else { return }
-//    let credential = FIRGoogleAuthProvider.credential(withIDToken: authentication.idToken,
-//                                                      accessToken: authentication.accessToken)
-    
-    // call sign in to firebase with credential
-//    FIRAuth.auth()?.signIn(with: credential) { (user, error) in
-//        if let error = error {
-//            print("Error \(error)")
-//            return
-//        }
-//    }
+    guard let authentication = user.authentication else { return }
+    let credential = FIRGoogleAuthProvider.credential(withIDToken: authentication.idToken,
+                                                      accessToken: authentication.accessToken)
+    FIRAuth.auth()?.signIn(with: credential) { (user, error) in
+        if let error = error {
+            print("Error \(error)")
+            return
+        }
+    }
   }
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions
     launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
-    // STEP 1: Configure FIRApp services
+    // Google sign in delegate set to self
+    GIDSignIn.sharedInstance().delegate = self
     
-    // STEP 2: Handle OAuth
-    // set GIDSignIn delegate
+    // STEP 1: Configure firebase services
+    FIRApp.configure()
     
-    // link clientID with Firebase client ID
+    // STEP 3: Handle OAuth
+    GIDSignIn.sharedInstance().clientID = FIRApp.defaultApp()?.options.clientID
+    GIDSignIn.sharedInstance().delegate = self // step 1 also
     
     
     return true

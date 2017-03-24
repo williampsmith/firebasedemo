@@ -60,16 +60,24 @@ class FCViewController: UIViewController, UITableViewDataSource, UITableViewDele
   }
 
   deinit {
-    //handle listener for new messages -- remove listener upon object destruction
+    // step 6: handle listener for new messages -- remove listener upon object destruction
+    if let refHandle = _refHandle {
+        self.ref.child("messages").removeObserver(withHandle: _refHandle)
+    }
   }
 
   func configureDatabase() {
     // step 6: handle listener for new messages -- add listener
     
     // get reference to root of the tree
+    ref = FIRDatabase.database().reference()
     
     // crete listener and listen for new messages
-    
+    _refHandle = self.ref.child("messages").observe(.childAdded, with: { [weak self] (snapshot) in
+        guard let strongSelf = self else { return }
+        strongSelf.messages.append(snapshot)
+        strongSelf.clientTable.insertRows(at: [IndexPath(row: strongSelf.messages.count-1, section: 0)], with: .automatic)
+    })
   }
 
   func configureStorage() {
@@ -120,10 +128,18 @@ class FCViewController: UIViewController, UITableViewDataSource, UITableViewDele
     
     // step 6
     // Unpack message from Firebase DataSnapshot
-    
+    let messageSnapshot = self.messages[indexPath.row]
+    guard let message = messageSnapshot.value as? [String: String] else { return cell }
+    let name = message[Constants.MessageFields.name] ?? ""
+    let text = message[Constants.MessageFields.text] ?? ""
+    cell.textLabel?.text = name + ": " + text
+    cell.imageView?.image = UIImage(named: "ic_account_circle")
     
     // uncomment to pull Google avatar
-    
+    if let photoURL = message[Constants.MessageFields.photoURL], let URL = URL(string: photoURL),
+        let data = try? Data(contentsOf: URL) {
+        cell.imageView?.image = UIImage(data: data)
+    }
     
     return cell
   }
@@ -146,7 +162,7 @@ class FCViewController: UIViewController, UITableViewDataSource, UITableViewDele
     }
     
     // Push data to Firebase Database
-    
+    self.ref.child("messages").childByAutoId().setValue(mdata)
   }
 
   // MARK: - Image Picker
@@ -189,10 +205,17 @@ class FCViewController: UIViewController, UITableViewDataSource, UITableViewDele
   }
 
   @IBAction func signOut(_ sender: UIButton) {
-    AppState.sharedInstance.signedIn = false
+//    AppState.sharedInstance.signedIn = false
+//    dismiss(animated: true, completion: nil)
     
-    // step 5: call sign out
-    
+    // step 5
+    let firebaseAuth = FIRAuth.auth()
+    do {
+        try firebaseAuth?.signOut()
+        dismiss(animated: true, completion: nil)
+    } catch let signOutError as NSError {
+        print ("Error signing out: \(signOutError.localizedDescription)")
+    }
   }
 
   func showAlert(withTitle title: String, message: String) {
